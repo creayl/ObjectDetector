@@ -1,5 +1,11 @@
 import cv2
 import numpy as np
+import os
+
+# Change the working directory to the folder this script is in.
+# Doing this because I'll be putting the files from each video in their 
+# own folder on GitHub
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 # Threshold to detect object
 thres = 0.5
