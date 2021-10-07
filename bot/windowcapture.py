@@ -1,6 +1,5 @@
 import numpy as np
-from win32 import win32gui
-import win32ui, win32con
+import win32gui, win32ui, win32con
 from threading import Thread, Lock
 
 
