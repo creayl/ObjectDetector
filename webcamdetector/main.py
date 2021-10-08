@@ -17,13 +17,13 @@ cap.set(4, 720)
 cap.set(10, 150)
 
 classNames = []
-classFile = "../nets/coco.names"
+classFile = "coco.names"
 with open(classFile, "rt") as f:
     classNames = f.read().rstrip("\n").split("\n")
 
 print("avail. classes: ", classNames)
-configPath = "../nets/ssd_mobilenet_v3_large_coco_2020_01_14.pbtxt"
-weightsPath = "../nets/ssd_mobilenet_v3_large_frozen_inference_graph.pb"
+configPath = "ssd_mobilenet_v3_large_coco_2020_01_14.pbtxt"
+weightsPath = "ssd_mobilenet_v3_large_frozen_inference_graph.pb"
 
 net = cv2.dnn_DetectionModel(weightsPath, configPath)
 net.setInputSize(320, 320)
