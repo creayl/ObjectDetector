@@ -100,7 +100,7 @@ class NewWorldBot:
     #     return found_harvestable
 
     def move_to_next_target(self):
-        # TODO we will need some logic to move to the nearest bounding box that fits our category
+        # TODO Feli? we will need some logic to move to the nearest bounding box that fits our class/category
         return False
 
     def have_stopped_moving(self):

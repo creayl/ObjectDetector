@@ -28,7 +28,7 @@ if DEBUG:
 # initialize the WindowCapture class
 wincap = WindowCapture(None)
 # load the detector
-# TODO Find out how to build our own CascadeClassifier model for opencv
+# TODO Find out how to build our own CascadeClassifier model for opencv, then we could use this Detection class, you can probably find this under https://www.youtube.com/watch?v=KecMlLUuiE4&list=PL1m2M8LQlzfKtkKq2lK5xko4X-8EZzFPI&index=1&ab_channel=LearnCodeByGaming
 # detector = Detection('harvestable_model_final.xml')
 # load an empty Vision class
 # vision = Vision()

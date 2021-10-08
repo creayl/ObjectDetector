@@ -23,7 +23,7 @@ class Vision:
 
     def get_walking_routes(self, rectangles):
         routes = []
-        # TODO Implement logic to return a walkable route to the given bboxes
+        # TODO Feli? Implement logic to return a walkable route to the given bboxes
         return routes
 
     # given a list of [x, y, w, h] rectangles and a canvas image to draw on, return an image with
