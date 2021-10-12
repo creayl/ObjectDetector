@@ -27,7 +27,7 @@ while True:
     loop_time = time()
 
     # press 'q' with the output window focused to exit.
-    # press 'f' to save screenshot as a positive image, press 'd' to
+    # press 'f' to save screenshot as a positive image, press 'd' tod
     # save as a negative image.
     # waits 1 ms every loop to process key presses
     key = cv.waitKey(1)
