@@ -1,56 +1,76 @@
-import logging
 import pyautogui
 import cv2 as cv
-from time import time
-from numpy.testing._private.nosetester import NoseTester
 import numpy as np
-from util.windowcapture import WindowCapture
-from util.vision import Vision
 import random
 import win32api, win32con
+from numpy.testing._private.nosetester import NoseTester
+from time import time
+
+from util.windowcapture import WindowCapture
+from util.vision import Vision
 from util.logger import Logger
+from util.utils import Utils
 
 
 class Player:
 
     # constants
     # escape
-    DEFAULT_EXIT_KEY = 27
+    KEY_EXIT_BOT = 27
+    # to be defined
+    # KEY_PAUSE_BOT = ''
+
+    KEY_HARVEST = "e"
+    KEY_WALK_BACKWARDS = "s"
+    KEY_AUTO_WALK = ","
+
+    KEY_FIRST_ATTACK = "q"
+    KEY_SECOND_ATTACK = "r"
+    KEY_THIRD_ATTACK = "f"
+
+    KEY_FIRST_POTION = "3"
+    KEY_SECOND_POTION = "4"
+    KEY_THIRD_POTION = "5"
+    KEY_FOURTH_POTION = "6"
 
     # properties
     pyautogui.FAILSAFE = False
     is_autowalk = False
     should_end = False
 
-    vision: Vision = None
+    canHarvestVision: Vision = None
+    stillHarvestingVision: Vision = None
+
     wincap: WindowCapture = None
     logger: Logger = None
+    utils: Utils = None
 
     # constructor
-    def __init__(self, wincap, vision):
-        self.wincap = wincap
-        self.vision = vision
+    def __init__(self):
+        self.wincap = WindowCapture(None)
+        self.canHarvestVision = Vision("img/harvest_tooltip.png")
+        self.stillHarvestingVision = Vision("img/harvest_in_progress.png")
+        self.utils = Utils()
         self.logger = Logger()
 
     def setMoving(self, move: bool):
         if self.is_autowalk != move:
-            pyautogui.press(",")
+            pyautogui.press(self.KEY_AUTO_WALK)
             self.is_autowalk = not self.is_autowalk
 
+    def takeALook(self):
+        return self.wincap.get_screenshot()
+
     def fightResponse(self):
-        pyautogui.press("q")
+        pyautogui.press(self.KEY_FIRST_ATTACK)
         if self.shouldEnd(0.5):
             return
-        pyautogui.press("3")
+        pyautogui.press(self.KEY_FIRST_ATTACK)
         if self.shouldEnd(0.5):
             return
 
     def isInFight(self, screenshot: NoseTester):
-        x = 1009
-        y = 1293
-        w = 250  # 532
-        h = 36
-        img = screenshot[y : y + h, x : x + w]
+        img = self.utils.cropImage(screenshot, 1009, 1293, 250, 36)
         pixels = np.float32(img.reshape(-1, 3))
 
         n_colors = 5
@@ -64,8 +84,12 @@ class Player:
         # BGR
         return dominant[0] < 30 and dominant[1] < 30 and dominant[2] > 120
 
-    def hasTarget(self, screenshot):
-        return len(self.vision.find(screenshot, threshold=0.8)) > 0
+    def canHarvest(self, screenshot: NoseTester):
+        return len(self.canHarvestVision.find(screenshot, threshold=0.8)) > 0
+
+    def isHarvesting(self, screenshot: NoseTester):
+        img = self.utils.cropImage(screenshot, 650, 350, 1150, 700)
+        return len(self.stillHarvestingVision.find(img, threshold=0.8)) > 0
 
     def moveToTarget(self):
         # walk forward as long as screenshot is not detected
@@ -73,16 +97,16 @@ class Player:
 
         start_time = time()
         while True:
-            screenshot = self.wincap.get_screenshot()
+            screenshot = self.takeALook()
 
-            has_target = self.hasTarget(screenshot)
-            if has_target:
+            can_harvest = self.canHarvest(screenshot)
+            if can_harvest:
                 self.setMoving(False)
 
             if self.isInFight(screenshot):
                 self.fightResponse()
 
-            if has_target:
+            if can_harvest:
                 return True
 
             if time() - start_time > 30:
@@ -108,13 +132,13 @@ class Player:
 
         parking_end = time() + random.uniform(2, 3)
         while time() < parking_end:
-            screenshot = self.wincap.get_screenshot()
+            screenshot = self.takeALook()
 
-            if not self.hasTarget(screenshot):
+            if not self.canHarvest(screenshot):
                 # einparken
-                pyautogui.keyDown("s")
+                pyautogui.keyDown(self.KEY_WALK_BACKWARDS)
             else:
-                pyautogui.keyUp("s")
+                pyautogui.keyUp(self.KEY_WALK_BACKWARDS)
                 break
 
             # debug output
@@ -124,21 +148,25 @@ class Player:
             cv.imshow("output", screenshot)
 
             if self.shouldEnd():
-                pyautogui.keyUp("s")
+                pyautogui.keyUp(self.KEY_WALK_BACKWARDS)
                 return
 
-        pyautogui.keyUp("s")
-        screenshot = self.wincap.get_screenshot()
-        if not self.hasTarget(screenshot):
+        pyautogui.keyUp(self.KEY_WALK_BACKWARDS)
+        screenshot = self.takeALook()
+        if not self.canHarvest(screenshot):
             return
-        pyautogui.press("e")
+
+        # harvest
+        pyautogui.press(self.KEY_HARVEST)
 
         sleep_start = time()
         sleep_end = sleep_start + random.uniform(6, 8)
-        while time() <= sleep_end:
-            screenshot = self.wincap.get_screenshot()
 
-            if time() > sleep_start + 1.5 and self.hasTarget(screenshot):
+        # while time() <= sleep_end:
+        while self.isHarvesting(self.takeALook()):
+            screenshot = self.takeALook()
+
+            if time() > sleep_start + 1.5 and self.canHarvest(screenshot):
                 return
 
             # debug output
@@ -168,8 +196,8 @@ class Player:
 
         while True:
             self.waitForHarvest()
-            screenshot = self.wincap.get_screenshot()
-            if not self.hasTarget(screenshot):
+            screenshot = self.takeALook()
+            if not self.canHarvest(screenshot):
                 break
 
     def shouldEnd(self, delay=0.001):
@@ -177,9 +205,9 @@ class Player:
         delay = delay * 1000
         if self.should_end:
             return True
-        key = cv.waitKey(int (delay))
+        key = cv.waitKey(int(delay))
         # escape pressed
-        if key == self.DEFAULT_EXIT_KEY:
+        if key == self.KEY_EXIT_BOT:
             self.setMoving(False)
             cv.destroyAllWindows()
             self.should_end = True
