@@ -1,7 +1,7 @@
 import logging
 import pyautogui
 import cv2 as cv
-from time import sleep, time
+from time import time
 from numpy.testing._private.nosetester import NoseTester
 import numpy as np
 from util.windowcapture import WindowCapture
@@ -39,12 +39,10 @@ class Player:
 
     def fightResponse(self):
         pyautogui.press("q")
-        sleep(0.5)
-        if self.shouldEnd():
+        if self.shouldEnd(0.5):
             return
         pyautogui.press("3")
-        sleep(0.5)
-        if self.shouldEnd():
+        if self.shouldEnd(0.5):
             return
 
     def isInFight(self, screenshot: NoseTester):
@@ -92,8 +90,7 @@ class Player:
                 win32api.mouse_event(
                     win32con.MOUSEEVENTF_MOVE, random.randrange(500, 1000), 0, 0, 0
                 )
-                sleep(0.5)
-                self.shouldEnd()
+                self.shouldEnd(0.5)
                 return False
 
             self.logger.logToImage(
@@ -107,7 +104,7 @@ class Player:
 
     def waitForHarvest(self):
         self.setMoving(False)
-        sleep(0.5)
+        self.shouldEnd(0.5)
 
         parking_end = time() + random.uniform(2, 3)
         while time() < parking_end:
@@ -156,15 +153,15 @@ class Player:
             if self.isInFight(screenshot):
                 self.fightResponse()
 
-            if self.shouldEnd():
+            if self.shouldEnd(0.25):
                 return
-            sleep(0.25)
+            # sleep(0.25)
 
     def harvest(self, moveDistance):
         if self.shouldEnd():
             return
         win32api.mouse_event(win32con.MOUSEEVENTF_MOVE, int(moveDistance), 0, 0, 0)
-        sleep(1)
+        self.shouldEnd(1)
 
         if not self.moveToTarget():
             return
@@ -175,10 +172,12 @@ class Player:
             if not self.hasTarget(screenshot):
                 break
 
-    def shouldEnd(self):
+    def shouldEnd(self, delay=0.001):
+        # convert delay from ms to sec
+        delay = delay * 1000
         if self.should_end:
             return True
-        key = cv.waitKey(1)
+        key = cv.waitKey(int (delay))
         # escape pressed
         if key == self.DEFAULT_EXIT_KEY:
             self.setMoving(False)

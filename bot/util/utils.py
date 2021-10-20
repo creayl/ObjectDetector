@@ -1,4 +1,4 @@
-from time import sleep, time
+from time import time
 import tensorflow as tf
 from domain.boundingbox import BoundingBox
 from typing import List
@@ -6,13 +6,12 @@ import cv2 as cv
 
 
 class Utils:
-
     def loadModel(self):
         print("Loading model...", end="")
         start_time = time()
 
         # Load saved model and build the detection function
-        detect_fn = tf.saved_model.load('saved_model')
+        detect_fn = tf.saved_model.load("saved_model")
 
         end_time = time()
         elapsed_time = end_time - start_time

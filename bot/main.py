@@ -3,7 +3,7 @@ from typing import List
 import cv2 as cv
 import tensorflow as tf
 import random
-from time import sleep, time
+from time import time
 from util.windowcapture import WindowCapture
 from util.vision import Vision
 from domain.boundingbox import BoundingBox
@@ -120,7 +120,8 @@ while True:
         win32api.mouse_event(
             win32con.MOUSEEVENTF_MOVE, random.randrange(500, 1000), 0, 0, 0
         )
-        sleep(0.5)
+        # sleep(0.5)
+        player.shouldEnd(0.5)
 
     # press 'q' with the output window focused to exit.
     # waits 1 ms every loop to process key presses
