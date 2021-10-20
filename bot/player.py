@@ -1,3 +1,4 @@
+import logging
 import pyautogui
 import cv2 as cv
 from time import sleep, time
@@ -7,9 +8,14 @@ from util.windowcapture import WindowCapture
 from util.vision import Vision
 import random
 import win32api, win32con
+from util.logger import Logger
 
 
 class Player:
+
+    # constants
+    # escape
+    DEFAULT_EXIT_KEY = 27
 
     # properties
     pyautogui.FAILSAFE = False
@@ -18,11 +24,13 @@ class Player:
 
     vision: Vision = None
     wincap: WindowCapture = None
+    logger: Logger = None
 
     # constructor
     def __init__(self, wincap, vision):
         self.wincap = wincap
         self.vision = vision
+        self.logger = Logger()
 
     def setMoving(self, move: bool):
         if self.is_autowalk != move:
@@ -88,15 +96,10 @@ class Player:
                 self.shouldEnd()
                 return False
 
-            cv.putText(
-                screenshot,
-                "MOVE: " + str(round(time() - start_time, 1)),
-                (int(20), int(50)),
-                cv.FONT_HERSHEY_PLAIN,
-                4,
-                (50, 255, 50),
-                2,
+            self.logger.logToImage(
+                screenshot, "MOVE: " + str(round(time() - start_time, 1))
             )
+
             cv.imshow("output", screenshot)
             self.setMoving(True)
             if self.shouldEnd():
@@ -118,14 +121,8 @@ class Player:
                 break
 
             # debug output
-            cv.putText(
-                screenshot,
-                "EINPARKEN: " + str(round(parking_end - time(), 1)),
-                (int(20), int(190)),
-                cv.FONT_HERSHEY_PLAIN,
-                4,
-                (50, 255, 50),
-                2,
+            self.logger.logToImage(
+                screenshot, "EINPARKEN: " + str(round(parking_end - time(), 1))
             )
             cv.imshow("output", screenshot)
 
@@ -148,14 +145,8 @@ class Player:
                 return
 
             # debug output
-            cv.putText(
-                screenshot,
-                "HARVESTING: " + str(round(sleep_end - time(), 1)),
-                (int(20), int(120)),
-                cv.FONT_HERSHEY_PLAIN,
-                4,
-                (50, 255, 50),
-                2,
+            self.logger.logToImage(
+                screenshot, "HARVESTING: " + str(round(sleep_end - time(), 1))
             )
             cv.imshow("output", screenshot)
 
@@ -189,7 +180,7 @@ class Player:
             return True
         key = cv.waitKey(1)
         # escape pressed
-        if key == 27:
+        if key == self.DEFAULT_EXIT_KEY:
             self.setMoving(False)
             cv.destroyAllWindows()
             self.should_end = True

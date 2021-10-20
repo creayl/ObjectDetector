@@ -10,6 +10,7 @@ from domain.boundingbox import BoundingBox
 import win32api, win32con
 from player import Player
 from util.utils import Utils
+from util.logger import Logger
 
 # Change the working directory to the folder this script is in.
 # Doing this because I'll be putting the files from each video in their own folder on GitHub
@@ -20,6 +21,7 @@ wincap = WindowCapture(None)
 vision = Vision("img/harvest_tooltip.png")
 player = Player(wincap, vision)
 utils = Utils()
+logger = Logger()
 
 cv.namedWindow(
     "output", flags=cv.WINDOW_NORMAL | cv.WINDOW_KEEPRATIO | cv.WINDOW_GUI_EXPANDED
@@ -93,14 +95,11 @@ while True:
             color,
             thickness=2,
         )
-        cv.putText(
+        logger.logToImageWithColorAndCoordinates(
             screenshot,
             str(round(confidence * 100, 2)) + "%",
-            (int(x + 4), int(y + 50)),
-            cv.FONT_HERSHEY_PLAIN,
-            2,
             color,
-            2,
+            (int(x + 4), int(y + 50)),
         )
     cv.rectangle(
         screenshot,
