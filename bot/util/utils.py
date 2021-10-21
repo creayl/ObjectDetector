@@ -1,8 +1,8 @@
-from time import time
 import tensorflow as tf
-from domain.boundingbox import BoundingBox
+from time import time
 from typing import List
-import cv2 as cv
+
+from domain.boundingbox import BoundingBox
 
 
 class Utils:
@@ -36,3 +36,6 @@ class Utils:
         screenMiddle = screenWidth / 2
         moveDistance = boxMiddle - screenMiddle
         return moveDistance
+
+    def cropImage(self, img, x, y, width, height):
+        return img[y : y + height, x : x + width]

@@ -1,14 +1,13 @@
 import os
-from typing import List
 import cv2 as cv
 import tensorflow as tf
 import random
-from time import time
-from util.windowcapture import WindowCapture
-from util.vision import Vision
-from domain.boundingbox import BoundingBox
 import win32api, win32con
+from typing import List
+from time import time
+
 from player import Player
+from domain.boundingbox import BoundingBox
 from util.utils import Utils
 from util.logger import Logger
 
@@ -16,10 +15,7 @@ from util.logger import Logger
 # Doing this because I'll be putting the files from each video in their own folder on GitHub
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
-# initialize classes
-wincap = WindowCapture(None)
-vision = Vision("img/harvest_tooltip.png")
-player = Player(wincap, vision)
+player = Player()
 utils = Utils()
 logger = Logger()
 
@@ -30,9 +26,14 @@ cv.namedWindow(
 detect_fn = utils.loadModel()
 
 loop_time = time()
+buff_time = loop_time + random.randrange(5, 10)
 while True:
+    if time() > buff_time:
+        player.buffYourself()
+        buff_time = time() + 19 * 60 + random.randrange(10, 300)
     # get an updated image of the game
-    screenshot = wincap.get_screenshot()
+    screenshot = player.takeALook()
+
     # Read and preprocess an image.
     rows = screenshot.shape[0]
     cols = screenshot.shape[1]
@@ -117,13 +118,10 @@ while True:
     if bestBox != None:
         player.harvest(moveDistance)
     else:  # fail-safe
-        win32api.mouse_event(
-            win32con.MOUSEEVENTF_MOVE, random.randrange(500, 1000), 0, 0, 0
-        )
-        # sleep(0.5)
+        player.moveMouseInFluidMotion(random.randrange(500, 1000))
         player.shouldEnd(0.5)
 
-    # press 'q' with the output window focused to exit.
+    # press 'esc' with the output window focused to exit.
     # waits 1 ms every loop to process key presses
     if player.shouldEnd():
         break
