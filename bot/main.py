@@ -26,7 +26,11 @@ cv.namedWindow(
 detect_fn = utils.loadModel()
 
 loop_time = time()
+buff_time = loop_time + random.randrange(5, 10)
 while True:
+    if time() > buff_time:
+        player.buffYourself()
+        buff_time = time() + 19 * 60 + random.randrange(10, 300)
     # get an updated image of the game
     screenshot = player.takeALook()
 
@@ -114,13 +118,10 @@ while True:
     if bestBox != None:
         player.harvest(moveDistance)
     else:  # fail-safe
-        win32api.mouse_event(
-            win32con.MOUSEEVENTF_MOVE, random.randrange(500, 1000), 0, 0, 0
-        )
-        # sleep(0.5)
+        player.moveMouseInFluidMotion(random.randrange(500, 1000))
         player.shouldEnd(0.5)
 
-    # press 'q' with the output window focused to exit.
+    # press 'esc' with the output window focused to exit.
     # waits 1 ms every loop to process key presses
     if player.shouldEnd():
         break

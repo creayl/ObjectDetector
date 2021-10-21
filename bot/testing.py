@@ -1,5 +1,5 @@
 import pyautogui
-import cv2 as cv
+import cv2 as cv2
 import numpy as np
 import os
 import random
@@ -30,12 +30,14 @@ wincap: WindowCapture = WindowCapture(None)
 logger: Logger = Logger()
 utils: Utils = Utils()
 
+#load image with alpha channel.  use IMREAD_UNCHANGED to ensure loading of alpha channel
+image = cv2.imread('your image', cv2.IMREAD_UNCHANGED)    
 
-def isStillHarvesting(screenshot: NoseTester):
-    img = utils.cropImage(screenshot, 650, 350, 1150, 700)
-    cv.imshow("debug", img)
-    cv.waitKey(0)
-    # return len(stillHarvestingVision.find(img, threshold=0.8)) > 0
+#make mask of where the transparent bits are
+trans_mask = image[:,:,3] == 0
 
+#replace areas of transparency with white and not transparent
+image[trans_mask] = [255, 255, 255, 255]
 
-isStillHarvesting(wincap.get_screenshot())
+#new image without alpha channel...
+new_img = cv2.cvtColor(image, cv2.COLOR_BGRA2BGR)
