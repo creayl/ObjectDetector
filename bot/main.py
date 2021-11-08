@@ -1,15 +1,15 @@
 import os
 import cv2 as cv
-import tensorflow as tf
+import numpy
 import random
-import win32api, win32con
-from typing import List
 from time import time
 
+from tensorflow.python.util.tf_inspect import signature
+
 from player import Player
-from domain.boundingbox import BoundingBox
 from util.utils import Utils
 from util.logger import Logger
+from util.ai import AI
 
 # Change the working directory to the folder this script is in.
 # Doing this because I'll be putting the files from each video in their own folder on GitHub
@@ -19,62 +19,25 @@ player = Player()
 utils = Utils()
 logger = Logger()
 
+DIST_MID_THRESH = 50
+
 cv.namedWindow(
     "output", flags=cv.WINDOW_NORMAL | cv.WINDOW_KEEPRATIO | cv.WINDOW_GUI_EXPANDED
 )
 
-detect_fn = utils.loadModel()
+ai = AI(utils.loadModel())
 
-loop_time = time()
-buff_time = loop_time + random.randrange(5, 10)
-while True:
-    if time() > buff_time:
-        player.buffYourself()
-        buff_time = time() + 19 * 60 + random.randrange(10, 300)
-    # get an updated image of the game
+
+def analyseScreen():
     screenshot = player.takeALook()
-
-    # Read and preprocess an image.
     rows = screenshot.shape[0]
     cols = screenshot.shape[1]
-    inp = cv.resize(screenshot, (320, 320))
-    inp = inp[:, :, [2, 1, 0]]  # BGR2RGB
 
-    # The input needs to be a tensor, convert it using `tf.convert_to_tensor`.
-    input_tensor = tf.convert_to_tensor(inp)
-    # The model expects a batch of images, so add an axis with `tf.newaxis`.
-    input_tensor = input_tensor[tf.newaxis, ...]
-    # input_tensor = np.expand_dims(image_np, 0)
-    detections = detect_fn(input_tensor)
-    # All outputs are batches tensors.
-    # Convert to numpy arrays, and take index [0] to remove the batch dimension.
-    # We're only interested in the first num_detections.
-    num_detections = int(detections.pop("num_detections"))
-    detections = {
-        key: value[0, :num_detections].numpy() for key, value in detections.items()
-    }
-    detections["num_detections"] = num_detections
-    bboxList: List[BoundingBox] = []
+    bboxList = ai.findTrees(screenshot)
+    return screenshot, rows, cols, bboxList
 
-    # Visualize detected bounding boxes.
-    for i in range(num_detections):
-        # classId = int(out[3][0][i])
-        confidence = detections["detection_scores"][i]
 
-        bbox = [float(v) for v in detections["detection_boxes"][i]]
-        if confidence > 0.3:
-            x = bbox[1] * cols
-            y = bbox[0] * rows
-            right = bbox[3] * cols
-            bottom = bbox[2] * rows
-
-            # add bbox to list of boxes
-            bboxList.append(BoundingBox(x, y, right, bottom, confidence))
-
-    bestBox = utils.calculateBestBox(bboxList, int(cols * rows))
-    moveDistance = utils.calculateMoveDistance(bestBox, cols)
-
-    # Visualize detected bounding boxes.
+def printDebugImage(screenshot, rows, cols, bboxList, bestBox, moveDistance, runtime):
     for i in range(len(bboxList)):
         bbox = bboxList[i]
         x = bbox.pointStart.x
@@ -109,14 +72,69 @@ while True:
         (50, 50, 255),
         thickness=2,
     )
+    logger.logToImage(screenshot, "ROTATE: " + str(round(runtime, 1)))
     # display the images
     cv.imshow("output", screenshot)
+
+
+loop_time = time()
+buff_time = loop_time + random.randrange(5, 10)
+while True:
+    if time() > buff_time:
+        player.buffYourself()
+        buff_time = time() + 19 * 60 + random.randrange(10, 300)
+
+    box_time = time()
+    moveDirection = None
+    while True:
+        # get an updated image of the game
+        screenshot, rows, cols, bboxList = analyseScreen()
+
+        if time() < box_time + 6:
+            bestBox = utils.calculateBestBox(bboxList, int(cols * rows))
+        elif time() < box_time + 12:
+            bestBox = utils.calculateNearestBox(bboxList, cols)
+        else:
+            bestBox = None
+            break
+
+        moveDistance = utils.calculateMoveDistance(bestBox, cols)
+
+        if moveDirection == None:
+            moveDirection = numpy.sign(moveDistance)
+
+        if numpy.sign(moveDistance) != moveDirection:
+            moveDistance = moveDistance * -1
+
+        # Visualize detected bounding boxes.
+        printDebugImage(
+            screenshot, rows, cols, bboxList, bestBox, moveDistance, time() - box_time
+        )
+
+        if abs(moveDistance) < DIST_MID_THRESH + 10:
+            break
+
+        pixelDistance = numpy.sign(moveDistance) * DIST_MID_THRESH
+        player.moveMouseInFluidMotion(pixelDistance)
+
+        if player.canHarvest(screenshot):
+            player.harvest()
+            break
+
+        if player.isInFight(screenshot):
+            player.fightResponse()
+            break
+
+        if player.shouldEnd(0.1):
+            bestBox = None
+            break
+
     # debug the loop rate
     print("FPS {}".format(1 / (time() - loop_time)))
     loop_time = time()
 
     if bestBox != None:
-        player.harvest(moveDistance)
+        player.harvest()
     else:  # fail-safe
         player.moveMouseInFluidMotion(random.randrange(500, 1000))
         player.shouldEnd(0.5)

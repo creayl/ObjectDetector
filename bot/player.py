@@ -2,7 +2,8 @@ import pyautogui
 import cv2 as cv
 import numpy as np
 import random
-import win32api, win32con
+import win32api
+import win32con
 from numpy.testing._private.nosetester import NoseTester
 from time import sleep, time
 
@@ -17,8 +18,8 @@ class Player:
     # constants
     # escape
     KEY_EXIT_BOT = 27
-    # to be defined
-    # KEY_PAUSE_BOT = ''
+    # p
+    KEY_PAUSE_BOT = 112
 
     KEY_HARVEST = "e"
     KEY_WALK_BACKWARDS = "s"
@@ -71,13 +72,13 @@ class Player:
 
     def buffYourself(self):
         pyautogui.press(self.KEY_SECOND_POTION)
-        if self.shouldEnd(0.5):
+        if self.shouldEnd(1.0):
             return
         pyautogui.press(self.KEY_THIRD_POTION)
-        if self.shouldEnd(0.5):
+        if self.shouldEnd(1.0):
             return
         pyautogui.press(self.KEY_FOURTH_POTION)
-        if self.shouldEnd(0.5):
+        if self.shouldEnd(1.0):
             return
 
     def isInFight(self, screenshot: NoseTester):
@@ -88,7 +89,8 @@ class Player:
         criteria = (cv.TERM_CRITERIA_EPS + cv.TERM_CRITERIA_MAX_ITER, 200, 0.1)
         flags = cv.KMEANS_RANDOM_CENTERS
 
-        _, labels, palette = cv.kmeans(pixels, n_colors, None, criteria, 10, flags)
+        _, labels, palette = cv.kmeans(
+            pixels, n_colors, None, criteria, 10, flags)
         _, counts = np.unique(labels, return_counts=True)
 
         dominant = palette[np.argmax(counts)]
@@ -96,7 +98,10 @@ class Player:
         return dominant[0] < 30 and dominant[1] < 30 and dominant[2] > 120
 
     def canHarvest(self, screenshot: NoseTester):
-        return len(self.canHarvestVision.find(screenshot, threshold=0.8)) > 0
+        img = self.utils.cropImage(screenshot, 650, 350, 1150, 700)
+        if self.utils.isBush(img) or self.utils.isFreshWater(img):
+            return False
+        return len(self.canHarvestVision.find(img, threshold=0.8)) > 0
 
     def isHarvesting(self, screenshot: NoseTester):
         img = self.utils.cropImage(screenshot, 650, 350, 1150, 700)
@@ -108,9 +113,13 @@ class Player:
 
         start_time = time()
         while True:
+            debug_time = time()
             screenshot = self.takeALook()
+            print("takeALook: " + str(time() - debug_time))
 
+            debug_time = time()
             can_harvest = self.canHarvest(screenshot)
+            print("can_harvest: " + str(time() - debug_time))
             # is_harvesting = self.isHarvesting(screenshot)
 
             if can_harvest:
@@ -119,8 +128,10 @@ class Player:
             # if is_harvesting:
             #     self.setMoving(False)
 
+            debug_time = time()
             if self.isInFight(screenshot):
                 self.fightResponse()
+            print("isInFight: " + str(time() - debug_time))
 
             if can_harvest:
                 return True
@@ -130,7 +141,7 @@ class Player:
             if time() - start_time > 30:
                 self.setMoving(False)
                 self.moveMouseInFluidMotion(random.randrange(500, 1000))
-                
+
                 self.shouldEnd(0.5)
                 return False
 
@@ -178,10 +189,13 @@ class Player:
         pyautogui.press(self.KEY_HARVEST)
 
         sleep_start = time()
-        sleep_end = sleep_start + random.uniform(3, 5)
+        sleep_min = sleep_start + random.uniform(2, 3)
+        sleep_max = sleep_start + random.uniform(10, 15)
 
-        while self.isHarvesting(self.takeALook()) or time() <= sleep_end:
-            print("stillHarvesting...")
+        while (
+            self.isHarvesting(self.takeALook()) and not time() >= sleep_max
+        ) or time() <= sleep_min:
+            # print("stillHarvesting...")
             screenshot = self.takeALook()
 
             if time() > sleep_start + 1.5 and self.canHarvest(screenshot):
@@ -189,7 +203,7 @@ class Player:
 
             # debug output
             self.logger.logToImage(
-                screenshot, "HARVESTING: " + str(round(sleep_end - time(), 1))
+                screenshot, "HARVESTING: " + str(round(sleep_min - time(), 1))
             )
             cv.imshow("output", screenshot)
 
@@ -203,10 +217,10 @@ class Player:
                 return
             # sleep(0.25)
 
-    def harvest(self, moveDistance):
+    def harvest(self):
         if self.shouldEnd():
             return
-        self.moveMouseInFluidMotion(moveDistance)
+        # self.moveMouseInFluidMotion(moveDistance)
         self.shouldEnd(1)
 
         if not self.moveToTarget():
@@ -220,11 +234,12 @@ class Player:
 
     def moveMouseInFluidMotion(self, moveDistance):
         distanceMoved = 0
-        movePerTick = 10
-        while distanceMoved < moveDistance:
-            win32api.mouse_event(win32con.MOUSEEVENTF_MOVE, int(movePerTick), 0, 0, 0)
-            distanceMoved = distanceMoved + movePerTick
-            sleep(0.001)
+        movePerTick = 50 * np.sign(moveDistance)
+        while distanceMoved < abs(moveDistance):
+            win32api.mouse_event(win32con.MOUSEEVENTF_MOVE,
+                                 int(movePerTick), 0, 0, 0)
+            distanceMoved = distanceMoved + abs(movePerTick)
+            # sleep(0.001)
 
     def shouldEnd(self, delay=0.001):
         # convert delay from ms to sec
@@ -232,6 +247,14 @@ class Player:
         if self.should_end:
             return True
         key = cv.waitKey(int(delay))
+        # 'p' pressed
+        if key == self.KEY_PAUSE_BOT:
+            print("pause pressed")
+            while True:
+                print("paused")
+                key = cv.waitKey(1)
+                if key == self.KEY_PAUSE_BOT:
+                    break
         # escape pressed
         if key == self.KEY_EXIT_BOT:
             self.setMoving(False)
