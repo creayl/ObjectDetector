@@ -2,8 +2,10 @@ import cv2
 import numpy as np
 import os
 
+from windowcapture import WindowCapture
+
 # Change the working directory to the folder this script is in.
-# Doing this because I'll be putting the files from each video in their 
+# Doing this because I'll be putting the files from each video in their
 # own folder on GitHub
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
@@ -11,6 +13,8 @@ os.chdir(os.path.dirname(os.path.abspath(__file__)))
 thres = 0.5
 nms_threshold = 0.2
 
+useWebcam = False
+wincap = WindowCapture(None)
 cap = cv2.VideoCapture(0)
 cap.set(3, 1280)
 cap.set(4, 720)
@@ -32,7 +36,12 @@ net.setInputMean((127.5, 127.5, 127.5))
 net.setInputSwapRB(True)
 
 while True:
-    success, img = cap.read()
+    if useWebcam:
+        success, img = cap.read()
+
+    else:
+        img = wincap.get_screenshot()
+
     classIds, confs, bbox = net.detect(img, confThreshold=thres)
     bbox = list(bbox)
     confs = list(np.array(confs).reshape(1, -1)[0])
@@ -47,7 +56,8 @@ while True:
         # i = i[0]
         box = bbox[i]
         x, y, w, h = box[0], box[1], box[2], box[3]
-        cv2.rectangle(img, (x, y), (x + w, h + y), color=(0, 255, 0), thickness=2)
+        cv2.rectangle(img, (x, y), (x + w, h + y),
+                      color=(0, 255, 0), thickness=2)
         cv2.putText(
             img,
             classNames[classIds[i] - 1].upper(),
@@ -68,7 +78,7 @@ while True:
         )
 
     cv2.imshow("output", img)
-     # press 'q' with the output window focused to exit.
+    # press 'q' with the output window focused to exit.
     # waits 1 ms every loop to process key presses
     key = cv2.waitKey(1)
     if key == ord("q"):
